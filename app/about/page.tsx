@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, Award, Users, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { HAIR_IMAGES } from '@/lib/image';
 
 const AboutPage = () => {
     return (
@@ -48,7 +49,7 @@ const AboutPage = () => {
                     >
                         <div className="aspect-[4/5] rounded-[3rem] overflow-hidden border border-gold-500/20 shadow-2xl shadow-gold-500/10">
                             <img
-                                src="https://images.unsplash.com/photo-1595475241949-0f021276d4ee?q=80&w=2000&auto=format&fit=crop"
+                                src={HAIR_IMAGES.about}
                                 alt="Hair Factory"
                                 className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
                             />

@@ -3,6 +3,8 @@ import { Urbanist } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import SessionProvider from "@/components/providers/SessionProvider";
+import { Toaster } from "sonner";
 
 const urbanist = Urbanist({
   variable: "--font-urbanist",
@@ -25,11 +27,14 @@ export default function RootLayout({
       <body
         className={`${urbanist.variable} antialiased selection:bg-gold-500/30 font-sans`}
       >
-        <Header />
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <Footer />
+        <SessionProvider>
+          <Header />
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <Footer />
+          <Toaster theme="dark" richColors position="top-right" />
+        </SessionProvider>
       </body>
     </html>
   );

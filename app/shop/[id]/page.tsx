@@ -1,413 +1,291 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Star, Shield, Truck, ShoppingBag, Send, ChevronRight, Minus, Plus, Check, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MOCK_PRODUCTS } from '@/lib/mock-data';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { Shield, Truck, ShoppingBag, Minus, Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { getProduct } from '@/lib/api/products';
 import { useCartStore } from '@/store/useCartStore';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
-import ProductCard from '@/components/product/ProductCard';
+import type { Product } from '@/types';
+import { getProductImageUrl } from '@/lib/image';
+import { toast } from 'sonner';
 
 const ProductDetail = () => {
-    const { id } = useParams();
-    const router = useRouter();
-    const addItem = useCartStore((state) => state.addItem);
-    const [selectedLength, setSelectedLength] = useState('12"');
-    const [quantity, setQuantity] = useState(1);
-    const [selectedImage, setSelectedImage] = useState(0);
-    const [showAddedNotification, setShowAddedNotification] = useState(false);
+  const { id } = useParams<{ id: string }>();
+  const addItem = useCartStore((state) => state.addItem);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedLength, setSelectedLength] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(0);
 
-    const product = MOCK_PRODUCTS.find(p => p.id === id);
+  useEffect(() => {
+    getProduct(id)
+      .then((res) => {
+        setProduct(res.product);
+        if (res.product.lengths?.length > 0) {
+          setSelectedLength(res.product.lengths[0]);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id]);
 
-    if (!product) {
-        return (
-            <div className="pt-40 pb-20 text-center text-white space-y-6 px-6">
-                <h2 className="text-3xl font-black">Product Not Found</h2>
-                <p className="text-gray-500">The product you're looking for doesn't exist.</p>
-                <Button asChild className="bg-gold-500 text-black font-bold rounded-xl hover:bg-gold-400 h-12 px-8 uppercase tracking-wider">
-                    <Link href="/shop">BACK TO SHOP</Link>
-                </Button>
-            </div>
-        );
-    }
-
-    const handleAddToCart = () => {
-        addItem({
-            id: `${product.id}-${selectedLength}`,
-            name: `${product.name} (${selectedLength})`,
-            price: product.price,
-            image: product.image,
-            quantity,
-            length: selectedLength,
-            texture: product.texture,
-        });
-        setShowAddedNotification(true);
-        setTimeout(() => setShowAddedNotification(false), 3000);
-    };
-
-    const handleWhatsAppOrder = () => {
-        const message = encodeURIComponent(
-            `Hi SlyHairs! I'm interested in:\n\n${product.name}\nLength: ${selectedLength}\nQuantity: ${quantity}\nTexture: ${product.texture}\n\nProduct Link: ${window.location.href}`
-        );
-        window.open(`https://wa.me/84967894448?text=${message}`, '_blank');
-    };
-
-    const lengths = ['10"', '12"', '14"', '16"', '18"', '20"', '22"', '24"', '26"', '28"', '30"'];
-    const images = [product.image, product.image, product.image, product.image];
-    const relatedProducts = MOCK_PRODUCTS.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
-
+  if (loading) {
     return (
-        <div className="pt-32 pb-20 px-6 md:px-12 bg-black min-h-screen">
-            {/* Added to Cart Notification */}
-            <AnimatePresence>
-                {showAddedNotification && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
-                        className="fixed top-24 right-6 z-50 bg-gold-500 text-black px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3"
-                    >
-                        <Check size={20} className="font-bold" />
-                        <span className="font-bold text-sm">Added to cart!</span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <div className="max-w-7xl mx-auto">
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-8 font-medium">
-                    <Link href="/" className="hover:text-gold-500 transition-colors">Home</Link>
-                    <ChevronRight size={14} className="text-gold-500/30" />
-                    <Link href="/shop" className="hover:text-gold-500 transition-colors">Shop</Link>
-                    <ChevronRight size={14} className="text-gold-500/30" />
-                    <span className="text-gold-500">{product.name}</span>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 mb-20">
-                    {/* Image Gallery */}
-                    <div className="space-y-4">
-                        {/* Main Image */}
-                        <motion.div
-                            key={selectedImage}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.3 }}
-                            className="aspect-[4/5] rounded-3xl overflow-hidden border border-white/10 bg-neutral-900 relative group"
-                        >
-                            <img
-                                src={images[selectedImage]}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                            />
-                            {product.tags && product.tags.length > 0 && (
-                                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                                    {product.tags.map(tag => (
-                                        <Badge
-                                            key={tag}
-                                            className="bg-gold-500 text-black border-none font-black text-xs uppercase tracking-wider px-3 py-1"
-                                        >
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            )}
-                        </motion.div>
-
-                        {/* Thumbnail Gallery */}
-                        <div className="grid grid-cols-4 gap-3">
-                            {images.map((img, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setSelectedImage(idx)}
-                                    className={cn(
-                                        "aspect-square rounded-2xl overflow-hidden border-2 transition-all transform hover:scale-105",
-                                        selectedImage === idx
-                                            ? "border-gold-500 ring-2 ring-gold-500/20"
-                                            : "border-white/10 hover:border-gold-500/50"
-                                    )}
-                                >
-                                    <img
-                                        src={img}
-                                        alt=""
-                                        className={cn(
-                                            "w-full h-full object-cover transition-opacity",
-                                            selectedImage === idx ? "opacity-100" : "opacity-60 hover:opacity-100"
-                                        )}
-                                    />
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="flex flex-col">
-                        <div className="space-y-4 mb-8">
-                            <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="text-gold-500 border-gold-500/30 font-bold text-xs uppercase tracking-wider px-4 py-1.5 bg-gold-500/5">
-                                    {product.category}
-                                </Badge>
-                                <Badge variant="outline" className="text-gray-400 border-white/10 font-medium text-xs uppercase tracking-wider px-4 py-1.5">
-                                    {product.texture}
-                                </Badge>
-                            </div>
-
-                            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-white leading-tight tracking-tighter">
-                                {product.name}
-                            </h1>
-
-                            <div className="flex items-center gap-4 py-2">
-                                <div className="flex text-gold-500">
-                                    {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill="currentColor" />)}
-                                </div>
-                                <span className="text-gray-500 text-xs md:text-sm font-medium">
-                                    5.0 • 124 Reviews
-                                </span>
-                            </div>
-
-                            <div className="flex items-baseline gap-4">
-                                <span className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tighter">
-                                    ${product.price.toFixed(2)}
-                                </span>
-                                {product.originalPrice && (
-                                    <>
-                                        <span className="text-2xl text-gray-600 line-through">
-                                            ${product.originalPrice.toFixed(2)}
-                                        </span>
-                                        <Badge className="bg-red-500/10 text-red-500 border-none font-bold text-xs">
-                                            SAVE ${(product.originalPrice - product.price).toFixed(2)}
-                                        </Badge>
-                                    </>
-                                )}
-                            </div>
-
-                            <p className="text-gray-400 text-base leading-relaxed">
-                                {product.description}
-                            </p>
-                        </div>
-
-                        <Separator className="bg-white/10 mb-8" />
-
-                        {/* Length Selection */}
-                        <div className="space-y-4 mb-6">
-                            <h3 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                                <span>Select Length</span>
-                                <span className="text-gold-500">({selectedLength})</span>
-                            </h3>
-                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                                {lengths.map(len => (
-                                    <Button
-                                        key={len}
-                                        variant={selectedLength === len ? "default" : "outline"}
-                                        onClick={() => setSelectedLength(len)}
-                                        className={cn(
-                                            "h-12 text-sm font-bold transition-all",
-                                            selectedLength === len
-                                                ? "bg-gold-500 text-black hover:bg-gold-400 border-gold-500"
-                                                : "bg-neutral-900 border-white/10 text-white hover:border-gold-500/50 hover:bg-neutral-800"
-                                        )}
-                                    >
-                                        {len}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Quantity Selection */}
-                        <div className="space-y-4 mb-8">
-                            <h3 className="text-white font-bold text-sm uppercase tracking-wider">Quantity</h3>
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center bg-neutral-900 border border-white/10 rounded-xl h-14 px-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="text-white hover:bg-white/5 h-10 w-10"
-                                    >
-                                        <Minus size={16} />
-                                    </Button>
-                                    <span className="text-white font-black w-16 text-center text-lg">{quantity}</span>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setQuantity(quantity + 1)}
-                                        className="text-white hover:bg-white/5 h-10 w-10"
-                                    >
-                                        <Plus size={16} />
-                                    </Button>
-                                </div>
-                                <Badge className="bg-green-500/10 text-green-500 border-none font-bold uppercase tracking-wider px-4 py-2">
-                                    ✓ IN STOCK
-                                </Badge>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                            <Button
-                                onClick={handleAddToCart}
-                                className="flex-1 h-14 bg-white text-black font-black uppercase tracking-wider rounded-xl hover:bg-gray-200 transition-all"
-                            >
-                                <ShoppingBag size={20} className="mr-3" />
-                                Add To Cart
-                            </Button>
-                            <Button
-                                onClick={handleWhatsAppOrder}
-                                className="flex-1 h-14 bg-gold-500 text-black font-black uppercase tracking-wider rounded-xl hover:bg-gold-400 transition-all"
-                            >
-                                <Send size={20} className="mr-3" />
-                                WhatsApp Order
-                            </Button>
-                        </div>
-
-                        {/* Trust Badges */}
-                        <div className="grid grid-cols-2 gap-6 p-6 bg-neutral-900/50 border border-white/5 rounded-2xl">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-gold-500/10 rounded-xl">
-                                    <Truck className="text-gold-500" size={24} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-white font-bold text-sm mb-1">Fast Shipping</p>
-                                    <p className="text-gray-500 text-xs leading-relaxed">Global delivery in 3-7 business days</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-gold-500/10 rounded-xl">
-                                    <Shield className="text-gold-500" size={24} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-white font-bold text-sm mb-1">Quality Guaranteed</p>
-                                    <p className="text-gray-500 text-xs leading-relaxed">Factory-direct quality assurance</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Product Details Tabs */}
-                <Tabs defaultValue="description" className="mb-20">
-                    <TabsList className="bg-neutral-900 border border-white/10 p-1 h-auto mb-8">
-                        <TabsTrigger
-                            value="description"
-                            className="data-[state=active]:bg-gold-500 data-[state=active]:text-black font-bold uppercase tracking-wider text-sm px-8 py-3"
-                        >
-                            Description
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="specifications"
-                            className="data-[state=active]:bg-gold-500 data-[state=active]:text-black font-bold uppercase tracking-wider text-sm px-8 py-3"
-                        >
-                            Specifications
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="care"
-                            className="data-[state=active]:bg-gold-500 data-[state=active]:text-black font-bold uppercase tracking-wider text-sm px-8 py-3"
-                        >
-                            Care Instructions
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="description" className="mt-0">
-                        <div className="bg-neutral-900/30 border border-white/5 rounded-2xl p-8 space-y-4">
-                            <h3 className="text-2xl font-black text-white mb-4">Premium Vietnamese Human Hair</h3>
-                            <p className="text-gray-400 leading-relaxed">
-                                Experience the finest quality with our {product.name}. Sourced directly from our Vietnamese factory,
-                                each bundle is meticulously crafted using 100% human hair with double-drawn technology for
-                                consistent thickness from root to tip.
-                            </p>
-                            <p className="text-gray-400 leading-relaxed">
-                                Our {product.texture} texture maintains its natural beauty and can be styled, colored, and treated
-                                just like your own hair. Perfect for professional stylists and discerning clients who demand
-                                nothing but the best.
-                            </p>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="specifications" className="mt-0">
-                        <div className="bg-neutral-900/30 border border-white/5 rounded-2xl p-8">
-                            <div className="grid gap-4">
-                                {[
-                                    { label: 'Hair Type', value: '100% Vietnamese Human Hair' },
-                                    { label: 'Texture', value: product.texture },
-                                    { label: 'Category', value: product.category },
-                                    { label: 'Quality', value: 'Double Drawn, Premium Grade' },
-                                    { label: 'Color', value: 'Natural Black (Can be dyed)' },
-                                    { label: 'Weight', value: '100g per bundle (±5g)' },
-                                    { label: 'Lifespan', value: '1-2 years with proper care' },
-                                    { label: 'Origin', value: 'Factory Direct from Vietnam' },
-                                ].map((spec, idx) => (
-                                    <div key={idx} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
-                                        <span className="text-gray-500 font-medium">{spec.label}</span>
-                                        <span className="text-white font-bold">{spec.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="care" className="mt-0">
-                        <div className="bg-neutral-900/30 border border-white/5 rounded-2xl p-8 space-y-6">
-                            <div>
-                                <h4 className="text-white font-bold mb-3 flex items-center gap-2">
-                                    <Info size={18} className="text-gold-500" />
-                                    Washing Instructions
-                                </h4>
-                                <ul className="text-gray-400 space-y-2 ml-7">
-                                    <li>• Wash with lukewarm water and sulfate-free shampoo</li>
-                                    <li>• Apply conditioner from mid-length to ends</li>
-                                    <li>• Gently squeeze out excess water, do not wring</li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-3 flex items-center gap-2">
-                                    <Info size={18} className="text-gold-500" />
-                                    Styling Tips
-                                </h4>
-                                <ul className="text-gray-400 space-y-2 ml-7">
-                                    <li>• Use heat protectant spray before styling</li>
-                                    <li>• Keep heat settings below 180°C (356°F)</li>
-                                    <li>• Detangle gently with a wide-tooth comb</li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-3 flex items-center gap-2">
-                                    <Info size={18} className="text-gold-500" />
-                                    Storage
-                                </h4>
-                                <ul className="text-gray-400 space-y-2 ml-7">
-                                    <li>• Store in a cool, dry place away from direct sunlight</li>
-                                    <li>• Keep in the original packaging when not in use</li>
-                                    <li>• Avoid contact with harsh chemicals</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </TabsContent>
-                </Tabs>
-
-                {/* Related Products */}
-                {relatedProducts.length > 0 && (
-                    <div>
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">You May Also Like</h2>
-                            <Button asChild variant="link" className="text-gold-500 hover:text-gold-400 uppercase tracking-wider font-bold">
-                                <Link href="/shop">View All</Link>
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {relatedProducts.map(relatedProduct => (
-                                <ProductCard key={relatedProduct.id} product={relatedProduct} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center pt-24">
+        <div className="w-8 h-8 border-2 border-gold-500 border-t-transparent rounded-full animate-spin" />
+      </div>
     );
+  }
+
+  if (!product) {
+    return (
+      <div className="pt-40 pb-20 text-center text-white space-y-6 px-6">
+        <h2 className="text-3xl font-black">Product Not Found</h2>
+        <p className="text-gray-500">The product you&apos;re looking for doesn&apos;t exist.</p>
+        <Button asChild className="bg-gold-500 text-black font-bold rounded-xl hover:bg-gold-400 h-12 px-8 uppercase tracking-wider">
+          <Link href="/shop">BACK TO SHOP</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const handleAddToCart = () => {
+    const cartId = selectedLength ? `${product.id}-${selectedLength}` : product.id;
+    addItem({
+      id: cartId,
+      name: selectedLength ? `${product.name} (${selectedLength}")` : product.name,
+      price: product.price,
+      image: getProductImageUrl(product.images?.[0]?.url),
+      quantity,
+      length: selectedLength ? `${selectedLength}"` : undefined,
+      texture: product.texture?.replace(/-/g, ' '),
+    });
+    toast.success(`${product.name} added to cart`);
+  };
+
+  const isOutOfStock = product.stock <= 0;
+  const images = product.images?.length > 0 ? product.images : [{ id: 'placeholder', url: '', alt: product.name, position: 0 }];
+
+  return (
+    <div className="pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-8">
+        <Link href="/" className="hover:text-gold-500">Home</Link>
+        <span>/</span>
+        <Link href="/shop" className="hover:text-gold-500">Shop</Link>
+        <span>/</span>
+        <span className="text-gray-300">{product.name}</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Images */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 mb-4">
+            <img
+              src={getProductImageUrl(images[selectedImage]?.url)}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {images.length > 1 && (
+            <div className="flex gap-3">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  onClick={() => setSelectedImage(i)}
+                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+                    selectedImage === i ? 'border-gold-500' : 'border-white/10 hover:border-white/30'
+                  }`}
+                >
+                  <img src={getProductImageUrl(img.url)} alt={img.alt || ''} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Info */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Badge variant="outline" className="bg-black/60 text-white border-white/10 text-[10px] uppercase tracking-widest">
+                {product.category?.title}
+              </Badge>
+              <Badge variant="outline" className="bg-black/60 text-white border-white/10 text-[10px] uppercase tracking-widest">
+                {product.texture?.replace(/-/g, ' ')}
+              </Badge>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-white">{product.name}</h1>
+          </div>
+
+          <div className="flex items-baseline gap-3">
+            <span className="text-gold-500 font-black text-3xl font-mono">£{product.price.toFixed(2)}</span>
+          </div>
+
+          {isOutOfStock && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm font-bold">
+              OUT OF STOCK
+            </div>
+          )}
+
+          {!isOutOfStock && product.stock <= 5 && (
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 text-orange-400 text-sm">
+              Only {product.stock} left in stock
+            </div>
+          )}
+
+          <Separator className="bg-white/10" />
+
+          {/* Length Selector */}
+          {product.lengths?.length > 0 && (
+            <div>
+              <label className="text-sm font-bold text-white uppercase tracking-widest mb-3 block">
+                Length
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {product.lengths.map((len) => (
+                  <button
+                    key={len}
+                    onClick={() => setSelectedLength(len)}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      selectedLength === len
+                        ? 'border-gold-500 bg-gold-500/10 text-gold-500'
+                        : 'border-white/10 text-gray-400 hover:border-gold-500/50'
+                    }`}
+                  >
+                    {len}&quot;
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quantity */}
+          <div>
+            <label className="text-sm font-bold text-white uppercase tracking-widest mb-3 block">Quantity</label>
+            <div className="flex items-center gap-1 bg-neutral-900 rounded-lg border border-white/10 w-fit">
+              <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="text-white hover:text-gold-500 hover:bg-transparent">
+                <Minus size={16} />
+              </Button>
+              <span className="w-12 text-center text-white font-bold">{quantity}</span>
+              <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                className="text-white hover:text-gold-500 hover:bg-transparent">
+                <Plus size={16} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Add to Cart */}
+          <Button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className="w-full h-14 bg-gold-500 text-black font-black rounded-xl hover:bg-gold-400 text-base uppercase tracking-wider disabled:opacity-50"
+          >
+            <ShoppingBag size={20} className="mr-2" />
+            {isOutOfStock ? 'OUT OF STOCK' : 'ADD TO CART'}
+          </Button>
+
+          {/* Trust Badges */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-4 bg-neutral-900 rounded-xl border border-white/5">
+              <Truck className="text-gold-500 shrink-0" size={20} />
+              <div>
+                <p className="text-white text-xs font-bold">Fast Shipping</p>
+                <p className="text-gray-500 text-[10px]">Worldwide delivery</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-neutral-900 rounded-xl border border-white/5">
+              <Shield className="text-gold-500 shrink-0" size={20} />
+              <div>
+                <p className="text-white text-xs font-bold">Quality Guarantee</p>
+                <p className="text-gray-500 text-[10px]">100% human hair</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="description" className="mt-8">
+            <TabsList className="bg-neutral-900 border border-white/5 p-1">
+              <TabsTrigger value="description" className="data-[state=active]:bg-gold-500/10 data-[state=active]:text-gold-500 text-xs uppercase tracking-widest">
+                Description
+              </TabsTrigger>
+              <TabsTrigger value="specs" className="data-[state=active]:bg-gold-500/10 data-[state=active]:text-gold-500 text-xs uppercase tracking-widest">
+                Specifications
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="description" className="mt-4 text-gray-400 text-sm leading-relaxed">
+              {product.description || 'No description available.'}
+            </TabsContent>
+            <TabsContent value="specs" className="mt-4">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between py-2 border-b border-white/5">
+                  <span className="text-gray-500">Texture</span>
+                  <span className="text-white capitalize">{product.texture?.replace(/-/g, ' ')}</span>
+                </div>
+                {product.hairColor && (
+                  <div className="flex justify-between py-2 border-b border-white/5">
+                    <span className="text-gray-500">Color</span>
+                    <span className="text-white capitalize">{product.hairColor.replace(/-/g, ' ')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-b border-white/5">
+                  <span className="text-gray-500">Origin</span>
+                  <span className="text-white capitalize">{product.origin}</span>
+                </div>
+                {product.weight && (
+                  <div className="flex justify-between py-2 border-b border-white/5">
+                    <span className="text-gray-500">Weight</span>
+                    <span className="text-white">{product.weight}g</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-b border-white/5">
+                  <span className="text-gray-500">Double Drawn</span>
+                  <span className="text-white">{product.isDoubleDrawn ? 'Yes' : 'No'}</span>
+                </div>
+                {product.density && (
+                  <div className="flex justify-between py-2 border-b border-white/5">
+                    <span className="text-gray-500">Density</span>
+                    <span className="text-white">{product.density}%</span>
+                  </div>
+                )}
+                {product.laceType && (
+                  <div className="flex justify-between py-2 border-b border-white/5">
+                    <span className="text-gray-500">Lace Type</span>
+                    <span className="text-white capitalize">{product.laceType.replace(/-/g, ' ')}</span>
+                  </div>
+                )}
+                {product.laceSize && (
+                  <div className="flex justify-between py-2 border-b border-white/5">
+                    <span className="text-gray-500">Lace Size</span>
+                    <span className="text-white">{product.laceSize}</span>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Tags */}
+          {product.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-4">
+              {product.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="bg-gold-500/5 border-gold-500/20 text-gold-500 text-[10px]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
 };
 
 export default ProductDetail;

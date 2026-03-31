@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ShoppingBag, Plus, Minus, Send, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ShoppingBag, Plus, Minus, ArrowRight, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
 import {
     Sheet,
@@ -19,15 +20,12 @@ interface CartDrawerProps {
 }
 
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
+    const router = useRouter();
     const { items, removeItem, updateQuantity, totalPrice } = useCartStore();
 
-    const handleWhatsAppCheckout = () => {
-        const message = encodeURIComponent(
-            `Hello SLYHAIRS! I would like to place an order:\n\n` +
-            items.map(item => `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}`).join('\n') +
-            `\n\nTotal: $${totalPrice().toFixed(2)}`
-        );
-        window.open(`https://wa.me/84967894448?text=${message}`, '_blank');
+    const handleCheckout = () => {
+        onClose();
+        router.push('/checkout');
     };
 
     return (
@@ -85,7 +83,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                 </button>
                                             </div>
                                             <span className="text-gold-500 font-bold font-mono text-sm">
-                                                ${(item.price * item.quantity).toFixed(2)}
+                                                £{(item.price * item.quantity).toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
@@ -108,18 +106,18 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                         <div className="flex items-center justify-between text-white">
                             <span className="text-gray-400 uppercase tracking-widest text-xs font-bold">Subtotal</span>
                             <span className="text-2xl font-black font-mono text-gold-500 italic">
-                                ${totalPrice().toFixed(2)}
+                                £{totalPrice().toFixed(2)}
                             </span>
                         </div>
                         <p className="text-[10px] text-gray-500 text-center italic leading-tight">
-                            Shipping and factory discounts calculated <br /> during WhatsApp negotiation.
+                            Shipping calculated at checkout.
                         </p>
                         <Button
-                            onClick={handleWhatsAppCheckout}
+                            onClick={handleCheckout}
                             className="w-full h-14 bg-gold-500 hover:bg-gold-400 text-black font-black uppercase tracking-widest rounded-xl text-sm flex items-center justify-center gap-3 transition-transform active:scale-[0.98]"
                         >
-                            <Send size={18} />
-                            ORDER VIA WHATSAPP
+                            CHECKOUT
+                            <ArrowRight size={18} />
                         </Button>
                     </div>
                 )}
