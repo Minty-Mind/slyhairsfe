@@ -1,11 +1,7 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-// All verified 200 OK on Unsplash — real hair & beauty photos
-const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop";
-
-export function getProductImageUrl(url: string | undefined | null): string {
-  if (!url) return PLACEHOLDER_IMAGE;
+export function getProductImageUrl(url: string | undefined | null): string | null {
+  if (!url) return null;
   if (url.startsWith("http")) return url;
   return `${API_BASE}${url}`;
 }
@@ -31,4 +27,3 @@ export const HAIR_IMAGES = {
   about: "https://images.unsplash.com/photo-1492106087820-71f1a00d2b11?q=80&w=1200&auto=format&fit=crop",
 } as const;
 
-export { PLACEHOLDER_IMAGE };

@@ -54,7 +54,9 @@ const Footer = () => {
             <ul className="space-y-3 text-sm text-gray-500">
               <li><Link href="/about" className="hover:text-gold-500 transition-colors">About Us</Link></li>
               <li><Link href="/contact" className="hover:text-gold-500 transition-colors">Contact</Link></li>
-              <li><Link href="/shop" className="hover:text-gold-500 transition-colors">Wholesale</Link></li>
+              <li><Link href="/faq" className="hover:text-gold-500 transition-colors">FAQ</Link></li>
+              <li><Link href="/shipping-info" className="hover:text-gold-500 transition-colors">Shipping Info</Link></li>
+              <li><Link href="/returns-policy" className="hover:text-gold-500 transition-colors">Returns &amp; Refunds</Link></li>
               <li><Link href="/orders" className="hover:text-gold-500 transition-colors">Track Order</Link></li>
             </ul>
           </div>
@@ -84,7 +86,11 @@ const Footer = () => {
           <p className="text-[10px] text-gray-600 uppercase tracking-widest">
             &copy; {new Date().getFullYear()} SlyHairs. All rights reserved.
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-[10px] text-gray-600 uppercase tracking-widest">
+              <Link href="/privacy-policy" className="hover:text-gold-500 transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-gold-500 transition-colors">Terms</Link>
+            </div>
             <div className="flex items-center gap-2 text-gray-600">
               <CreditCard size={16} />
               <span className="text-[10px] uppercase tracking-widest">Secure Payments via Stripe</span>

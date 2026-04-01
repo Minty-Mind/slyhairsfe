@@ -5,9 +5,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
-import { createCheckoutSession } from "@/lib/api/checkout";
+import { createCheckoutSession, validateCartStock } from "@/lib/api/checkout";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
+import { ShoppingBag, ArrowRight, Loader2, AlertTriangle } from "lucide-react";
 
 export default function CheckoutPage() {
   const { data: session } = useSession();
@@ -47,10 +47,35 @@ export default function CheckoutPage() {
     );
   }
 
+  const [stockWarnings, setStockWarnings] = useState<string[]>([]);
+
   const handleCheckout = async () => {
     setLoading(true);
     setError("");
+    setStockWarnings([]);
+
     try {
+      // Validate stock before proceeding
+      const { stockMap } = await validateCartStock(items.map((i) => i.id));
+      const warnings: string[] = [];
+
+      for (const item of items) {
+        const stock = stockMap[item.id];
+        if (!stock) {
+          warnings.push(`${item.name} is no longer available`);
+        } else if (stock.stock === 0) {
+          warnings.push(`${item.name} is out of stock`);
+        } else if (stock.stock < item.quantity) {
+          warnings.push(`${item.name} only has ${stock.stock} left (you have ${item.quantity} in cart)`);
+        }
+      }
+
+      if (warnings.length > 0) {
+        setStockWarnings(warnings);
+        setLoading(false);
+        return;
+      }
+
       const checkoutItems = items.map((item) => ({
         productId: item.id,
         name: item.name,
@@ -104,6 +129,19 @@ export default function CheckoutPage() {
             <span className="text-gold-500 font-black text-xl font-mono">£{totalPrice.toFixed(2)}</span>
           </div>
         </div>
+
+        {stockWarnings.length > 0 && (
+          <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-yellow-400 font-bold text-sm">
+              <AlertTriangle size={16} />
+              Stock Issues
+            </div>
+            {stockWarnings.map((w, i) => (
+              <p key={i} className="text-yellow-400/80 text-sm">{w}</p>
+            ))}
+            <p className="text-gray-500 text-xs mt-2">Please update your cart before proceeding.</p>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">

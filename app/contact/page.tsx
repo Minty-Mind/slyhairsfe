@@ -19,19 +19,28 @@ const ContactPage = () => {
     }
     setSending(true);
 
-    // Build WhatsApp message as fallback since no email backend
-    const msg = encodeURIComponent(
-      `New Inquiry from ${form.name}\nEmail: ${form.email}\nSubject: ${form.subject}\n\n${form.message}`
-    );
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${API_BASE}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    // Simulate send delay for UX
-    await new Promise(r => setTimeout(r, 1000));
-    setSending(false);
-    setSent(true);
-    toast.success('Inquiry submitted! We\'ll get back to you within 24 hours.');
+      if (!res.ok) throw new Error('Failed to send');
 
-    // Open WhatsApp with the message
-    window.open(`https://wa.me/84967894448?text=${msg}`, '_blank');
+      setSent(true);
+      toast.success('Inquiry submitted! We\'ll get back to you within 24 hours.');
+    } catch {
+      // Fallback to WhatsApp if API fails
+      const msg = encodeURIComponent(
+        `New Inquiry from ${form.name}\nEmail: ${form.email}\nSubject: ${form.subject}\n\n${form.message}`
+      );
+      window.open(`https://wa.me/84967894448?text=${msg}`, '_blank');
+      toast.success('Redirecting to WhatsApp...');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

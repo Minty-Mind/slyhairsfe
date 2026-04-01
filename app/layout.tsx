@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { Toaster } from "sonner";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const urbanist = Urbanist({
   variable: "--font-urbanist",
@@ -33,6 +34,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <ChatWidget />
           <Toaster theme="dark" richColors position="top-right" />
         </SessionProvider>
       </body>

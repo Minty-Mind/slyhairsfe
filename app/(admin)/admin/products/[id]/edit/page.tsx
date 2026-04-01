@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { createProduct, uploadImage } from "@/lib/api/admin";
+import { useRouter, useParams } from "next/navigation";
+import { updateProduct, uploadImage } from "@/lib/api/admin";
+import { getProduct } from "@/lib/api/products";
 import { getCategories } from "@/lib/api/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Loader2, Upload, X, ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Category } from "@/types";
+import type { Category, Product } from "@/types";
 import { getProductImageUrl } from "@/lib/image";
 
 const TEXTURES = [
@@ -23,13 +24,14 @@ const HAIR_COLORS = [
   "ombre-1b-27", "ombre-1b-30", "ombre-1b-99j", "piano-4-27",
 ];
 
-export default function NewProductPage() {
+export default function EditProductPage() {
   const router = useRouter();
+  const { id } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pendingImages, setPendingImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -37,8 +39,8 @@ export default function NewProductPage() {
     price: "",
     categoryId: "",
     texture: "bone-straight",
-    hairColor: "natural-black",
-    lengths: "14,16,18,20,22",
+    hairColor: "",
+    lengths: "",
     origin: "vietnamese",
     weight: "",
     isDoubleDrawn: false,
@@ -51,8 +53,36 @@ export default function NewProductPage() {
   });
 
   useEffect(() => {
-    getCategories().then((res) => setCategories(res.categories)).catch(() => {});
-  }, []);
+    Promise.all([
+      getProduct(id).then((res) => res.product),
+      getCategories().then((res) => res.categories),
+    ])
+      .then(([prod, cats]) => {
+        setProduct(prod);
+        setCategories(cats);
+        setForm({
+          name: prod.name,
+          slug: prod.slug,
+          description: prod.description || "",
+          price: String(prod.price),
+          categoryId: prod.categoryId,
+          texture: prod.texture,
+          hairColor: prod.hairColor || "",
+          lengths: prod.lengths.join(", "),
+          origin: prod.origin,
+          weight: prod.weight ? String(prod.weight) : "",
+          isDoubleDrawn: prod.isDoubleDrawn,
+          density: prod.density || "",
+          laceType: prod.laceType || "",
+          laceSize: prod.laceSize || "",
+          tags: prod.tags.join(", "),
+          stock: String(prod.stock),
+          featured: prod.featured,
+        });
+      })
+      .catch(() => toast.error("Failed to load product"))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -62,38 +92,33 @@ export default function NewProductPage() {
     }));
   };
 
-  const autoSlug = (name: string) => {
-    return name.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/^-+|-+$/g, "");
-  };
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const newFiles = files.filter((f) => f.type.startsWith("image/") && f.size <= 5 * 1024 * 1024);
-    if (newFiles.length !== files.length) {
-      toast.error("Some files were skipped (must be images under 5MB)");
+    setUploading(true);
+    try {
+      const result = await uploadImage(file, id);
+      setProduct((prev) =>
+        prev ? { ...prev, images: [...prev.images, { id: Date.now().toString(), url: result.url, alt: null, position: prev.images.length }] } : prev
+      );
+      toast.success("Image uploaded!");
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
-
-    setPendingImages((prev) => [...prev, ...newFiles]);
-    setImagePreviews((prev) => [...prev, ...newFiles.map((f) => URL.createObjectURL(f))]);
-    e.target.value = "";
-  };
-
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviews[index]);
-    setPendingImages((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
     try {
-      const result = await createProduct({
+      await updateProduct(id, {
         name: form.name,
-        slug: form.slug || autoSlug(form.name),
+        slug: form.slug,
         description: form.description || null,
         price: parseFloat(form.price),
         categoryId: form.categoryId,
@@ -111,28 +136,35 @@ export default function NewProductPage() {
         featured: form.featured,
       } as Record<string, unknown>);
 
-      // Upload images after product is created
-      if (pendingImages.length > 0) {
-        setUploading(true);
-        toast.info(`Uploading ${pendingImages.length} image(s)...`);
-        for (const file of pendingImages) {
-          try {
-            await uploadImage(file, result.product.id);
-          } catch {
-            toast.error(`Failed to upload ${file.name}`);
-          }
-        }
-      }
-
-      toast.success("Product created!");
+      toast.success("Product updated!");
       router.push("/admin/products");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create product");
+      toast.error(err instanceof Error ? err.message : "Failed to update product");
     } finally {
-      setLoading(false);
-      setUploading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="text-gold-500 animate-spin" size={32} />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="text-center py-24">
+        <h2 className="text-white text-xl font-bold mb-4">Product not found</h2>
+        <Link href="/admin/products">
+          <Button className="bg-gold-500 text-black font-bold hover:bg-gold-400">
+            <ArrowLeft size={16} className="mr-2" /> Back to Products
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -141,47 +173,47 @@ export default function NewProductPage() {
       </Link>
 
       <div>
-        <h1 className="text-2xl font-black text-white">NEW PRODUCT</h1>
+        <h1 className="text-2xl font-black text-white">EDIT PRODUCT</h1>
+        <p className="text-gray-500 text-sm mt-1">{product.name}</p>
         <div className="h-1 w-12 bg-gold-500 mt-1" />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Product Images */}
-        <div className="bg-neutral-900 rounded-xl border border-white/5 p-5">
-          <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2">
-            <ImagePlus size={16} className="text-gold-500" />
-            Product Images
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {imagePreviews.map((preview, i) => (
-              <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/10 group">
-                <img src={preview} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(i)}
-                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X size={12} className="text-white" />
-                </button>
-              </div>
-            ))}
-            <label className="w-24 h-24 rounded-lg border-2 border-dashed border-white/10 hover:border-gold-500/50 flex flex-col items-center justify-center cursor-pointer transition-colors">
-              <Upload size={18} className="text-gray-500 mb-1" />
-              <span className="text-gray-500 text-[10px]">Add Photo</span>
-              <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
-            </label>
-          </div>
-          {pendingImages.length > 0 && (
-            <p className="text-gray-500 text-xs mt-3">{pendingImages.length} image(s) ready to upload on save</p>
-          )}
+      {/* Image Gallery */}
+      <div className="bg-neutral-900 rounded-xl border border-white/5 p-5">
+        <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2">
+          <ImagePlus size={16} className="text-gold-500" />
+          Product Images
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          {product.images.map((img) => (
+            <div key={img.id} className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/10 group">
+              <img
+                src={getProductImageUrl(img.url) || ""}
+                alt={img.alt || product.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ))}
+          <label className="w-24 h-24 rounded-lg border-2 border-dashed border-white/10 hover:border-gold-500/50 flex flex-col items-center justify-center cursor-pointer transition-colors">
+            {uploading ? (
+              <Loader2 size={20} className="text-gold-500 animate-spin" />
+            ) : (
+              <>
+                <Upload size={18} className="text-gray-500 mb-1" />
+                <span className="text-gray-500 text-[10px]">Upload</span>
+              </>
+            )}
+            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
+          </label>
         </div>
+      </div>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name & Slug */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-400 mb-1 block">Name *</label>
             <Input name="name" value={form.name} onChange={handleChange}
-              onBlur={() => !form.slug && setForm((p) => ({ ...p, slug: autoSlug(p.name) }))}
               className="bg-neutral-900 border-white/10 text-white" required />
           </div>
           <div>
@@ -199,7 +231,7 @@ export default function NewProductPage() {
         {/* Price, Category, Stock */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-400 mb-1 block">Price (£) *</label>
+            <label className="text-sm font-medium text-gray-400 mb-1 block">Price (&pound;) *</label>
             <Input name="price" type="number" step="0.01" value={form.price} onChange={handleChange}
               className="bg-neutral-900 border-white/10 text-white" required />
           </div>
@@ -260,6 +292,25 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* Lace fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-400 mb-1 block">Density</label>
+            <Input name="density" value={form.density} onChange={handleChange}
+              placeholder="e.g. 150%" className="bg-neutral-900 border-white/10 text-white" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-400 mb-1 block">Lace Type</label>
+            <Input name="laceType" value={form.laceType} onChange={handleChange}
+              placeholder="e.g. HD Lace" className="bg-neutral-900 border-white/10 text-white" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-400 mb-1 block">Lace Size</label>
+            <Input name="laceSize" value={form.laceSize} onChange={handleChange}
+              placeholder="e.g. 13x4" className="bg-neutral-900 border-white/10 text-white" />
+          </div>
+        </div>
+
         {/* Tags */}
         <div>
           <label className="text-sm font-medium text-gray-400 mb-1 block">Tags (comma-separated)</label>
@@ -281,9 +332,9 @@ export default function NewProductPage() {
           </label>
         </div>
 
-        <Button type="submit" disabled={loading}
+        <Button type="submit" disabled={saving}
           className="w-full h-14 bg-gold-500 text-black font-bold rounded-xl hover:bg-gold-400 text-base uppercase tracking-wider">
-          {loading ? <><Loader2 size={18} className="mr-2 animate-spin" /> Creating...</> : "Create Product"}
+          {saving ? <><Loader2 size={18} className="mr-2 animate-spin" /> Saving...</> : "Update Product"}
         </Button>
       </form>
     </div>

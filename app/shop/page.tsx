@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { Filter, ChevronDown, LayoutGrid, List, X, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { Filter, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, List, X, SlidersHorizontal, Loader2 } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import { getProducts } from '@/lib/api/products';
 import { cn } from '@/lib/utils';
@@ -49,12 +49,18 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get('category') || '';
   const initialSort = searchParams.get('sort') || 'relevance';
+  const initialQuery = searchParams.get('q') || '';
+
+  const PRODUCTS_PER_PAGE = 9;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedTexture, setSelectedTexture] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortBy, setSortBy] = useState(initialSort);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -63,31 +69,46 @@ function ShopContent() {
     setLoading(true);
     try {
       const res = await getProducts({
+        q: searchQuery || undefined,
         category: selectedCategory || undefined,
         texture: selectedTexture || undefined,
         sort: sortBy,
-        limit: 50,
+        page: currentPage,
+        limit: PRODUCTS_PER_PAGE,
       });
       setProducts(res.products);
       setTotal(res.total);
+      setTotalPages(res.totalPages);
     } catch {
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, selectedTexture, sortBy]);
+  }, [searchQuery, selectedCategory, selectedTexture, sortBy, currentPage]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedTexture, sortBy]);
+
+  // Sync search query from URL params (when coming from header search)
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    if (q !== searchQuery) setSearchQuery(q);
+  }, [searchParams]);
+
   const resetFilters = () => {
     setSelectedCategory('');
     setSelectedTexture('');
+    setSearchQuery('');
     setSortBy('relevance');
   };
 
-  const activeFilterCount = (selectedCategory ? 1 : 0) + (selectedTexture ? 1 : 0);
+  const activeFilterCount = (selectedCategory ? 1 : 0) + (selectedTexture ? 1 : 0) + (searchQuery ? 1 : 0);
 
   return (
     <div className="pt-24 pb-20 bg-black min-h-screen">
@@ -108,12 +129,16 @@ function ShopContent() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">
-              {selectedCategory
-                ? CATEGORIES.find(c => c.value === selectedCategory)?.label || 'Shop'
-                : 'All Products'}
+              {searchQuery
+                ? 'Search Results'
+                : selectedCategory
+                  ? CATEGORIES.find(c => c.value === selectedCategory)?.label || 'Shop'
+                  : 'All Products'}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              {loading ? 'Loading...' : `${total} product${total !== 1 ? 's' : ''}`}
+              {loading ? 'Loading...' : searchQuery
+                ? `${total} result${total !== 1 ? 's' : ''} for "${searchQuery}"`
+                : `${total} product${total !== 1 ? 's' : ''}`}
             </p>
           </div>
 
@@ -179,7 +204,7 @@ function ShopContent() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
-          <aside className={cn("w-full lg:w-64 space-y-6 shrink-0", showFilters ? "block" : "hidden lg:block")}>
+          <aside className={cn("w-full lg:w-64 space-y-6 shrink-0 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:scrollbar-hide", showFilters ? "block" : "hidden lg:block")}>
             {activeFilterCount > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-xs">{activeFilterCount} active filter{activeFilterCount !== 1 ? 's' : ''}</span>
@@ -238,18 +263,6 @@ function ShopContent() {
               </div>
             </div>
 
-            {/* Wholesale CTA */}
-            <div className="gold-gradient rounded-2xl p-6 space-y-3">
-              <h4 className="text-black font-black text-sm uppercase tracking-wide">Wholesale?</h4>
-              <p className="text-black/60 text-xs leading-relaxed">
-                Get factory-direct pricing on bulk orders.
-              </p>
-              <Link href="/contact">
-                <Button className="w-full bg-black text-white font-bold uppercase tracking-widest text-[10px] h-10 rounded-xl hover:bg-gray-900">
-                  Get Quote
-                </Button>
-              </Link>
-            </div>
           </aside>
 
           {/* Product Grid */}
@@ -261,15 +274,53 @@ function ShopContent() {
                 ))}
               </div>
             ) : products.length > 0 ? (
-              <div className={cn(
-                viewMode === 'grid'
-                  ? "grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-5"
-                  : "flex flex-col gap-4"
-              )}>
-                {products.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className={cn(
+                  viewMode === 'grid'
+                    ? "grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                    : "flex flex-col gap-4"
+                )}>
+                  {products.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-10">
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                      className="p-2.5 rounded-xl border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={cn(
+                          "w-10 h-10 rounded-xl text-sm font-bold transition-all",
+                          currentPage === page
+                            ? "bg-gold-500 text-black"
+                            : "text-gray-400 border border-white/10 hover:bg-white/5 hover:text-white"
+                        )}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                      className="p-2.5 rounded-xl border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="py-24 text-center space-y-6">
                 <div className="w-20 h-20 mx-auto bg-neutral-900 rounded-2xl flex items-center justify-center">
@@ -287,6 +338,19 @@ function ShopContent() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Wholesale CTA */}
+        <div className="gold-gradient rounded-2xl p-6 space-y-3 mt-10 max-w-md mx-auto text-center">
+          <h4 className="text-black font-black text-sm uppercase tracking-wide">Wholesale?</h4>
+          <p className="text-black/60 text-xs leading-relaxed">
+            Get factory-direct pricing on bulk orders.
+          </p>
+          <Link href="/contact">
+            <Button className="w-full bg-black text-white font-bold uppercase tracking-widest text-[10px] h-10 rounded-xl hover:bg-gray-900">
+              Get Quote
+            </Button>
+          </Link>
         </div>
       </div>
 

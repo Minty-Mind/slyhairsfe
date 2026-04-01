@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Eye } from 'lucide-react';
+import { ShoppingBag, Eye, ImageOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useCartStore, CartItem } from '@/store/useCartStore';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import type { Product } from '@/types';
 import { getProductImageUrl } from '@/lib/image';
 
+const NoImage = () => (
+  <div className="w-full h-full bg-neutral-800 flex flex-col items-center justify-center gap-2">
+    <ImageOff size={32} className="text-gray-600" />
+    <span className="text-gray-600 text-[10px] uppercase tracking-widest">No Image</span>
+  </div>
+);
+
 const ProductCard = ({ product }: { product: Product }) => {
   const addItem = useCartStore((state) => state.addItem);
+  const [imgError, setImgError] = useState(false);
+
+  const imageUrl = getProductImageUrl(product.images?.[0]?.url);
+  const showImage = imageUrl && !imgError;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -19,14 +30,12 @@ const ProductCard = ({ product }: { product: Product }) => {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: getProductImageUrl(product.images?.[0]?.url),
+      image: imageUrl || "",
       quantity: 1,
       texture: product.texture,
     };
     addItem(cartItem);
   };
-
-  const imageUrl = getProductImageUrl(product.images?.[0]?.url);
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
@@ -39,11 +48,16 @@ const ProductCard = ({ product }: { product: Product }) => {
     >
       <div className="relative aspect-[4/5] overflow-hidden">
         <Link href={`/shop/${product.slug}`}>
-          <img
-            src={imageUrl}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          />
+          {showImage ? (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+          ) : (
+            <NoImage />
+          )}
         </Link>
 
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">

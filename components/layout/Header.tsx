@@ -117,6 +117,14 @@ const Header = () => {
                     </div>
                     <div className="py-2">
                       <Link
+                        href="/account"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-5 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-gold-500 transition-colors"
+                      >
+                        <User size={16} />
+                        My Account
+                      </Link>
+                      <Link
                         href="/orders"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="flex items-center gap-3 px-5 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-gold-500 transition-colors"

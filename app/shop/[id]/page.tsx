@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Shield, Truck, ShoppingBag, Minus, Plus } from 'lucide-react';
+import { Shield, Truck, ShoppingBag, Minus, Plus, ImageOff } from 'lucide-react';
+
+const NoImage = () => (
+  <div className="w-full h-full bg-neutral-800 flex flex-col items-center justify-center gap-3">
+    <ImageOff size={48} className="text-gray-600" />
+    <span className="text-gray-600 text-xs uppercase tracking-widest">No Image Yet</span>
+  </div>
+);
 import { motion } from 'framer-motion';
 import { getProduct } from '@/lib/api/products';
 import { useCartStore } from '@/store/useCartStore';
@@ -14,6 +21,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Product } from '@/types';
 import { getProductImageUrl } from '@/lib/image';
 import { toast } from 'sonner';
+import ProductReviews from '@/components/product/ProductReviews';
+
+const ZoomImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [zooming, setZooming] = useState(false);
+  const [position, setPosition] = useState({ x: 50, y: 50 });
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setPosition({ x, y });
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full relative cursor-crosshair overflow-hidden"
+      onMouseEnter={() => setZooming(true)}
+      onMouseLeave={() => setZooming(false)}
+      onMouseMove={handleMouseMove}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover"
+      />
+      {zooming && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `url(${src})`,
+            backgroundSize: '250%',
+            backgroundPosition: `${position.x}% ${position.y}%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +111,7 @@ const ProductDetail = () => {
       id: cartId,
       name: selectedLength ? `${product.name} (${selectedLength}")` : product.name,
       price: product.price,
-      image: getProductImageUrl(product.images?.[0]?.url),
+      image: getProductImageUrl(product.images?.[0]?.url) || "",
       quantity,
       length: selectedLength ? `${selectedLength}"` : undefined,
       texture: product.texture?.replace(/-/g, ' '),
@@ -71,7 +120,7 @@ const ProductDetail = () => {
   };
 
   const isOutOfStock = product.stock <= 0;
-  const images = product.images?.length > 0 ? product.images : [{ id: 'placeholder', url: '', alt: product.name, position: 0 }];
+  const images = product.images?.length > 0 ? product.images : [];
 
   return (
     <div className="pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto">
@@ -88,25 +137,37 @@ const ProductDetail = () => {
         {/* Images */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <div className="aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 mb-4">
-            <img
-              src={getProductImageUrl(images[selectedImage]?.url)}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+            {images.length > 0 && getProductImageUrl(images[selectedImage]?.url) ? (
+              <ZoomImage
+                src={getProductImageUrl(images[selectedImage]?.url)!}
+                alt={product.name}
+              />
+            ) : (
+              <NoImage />
+            )}
           </div>
           {images.length > 1 && (
             <div className="flex gap-3">
-              {images.map((img, i) => (
-                <button
-                  key={img.id}
-                  onClick={() => setSelectedImage(i)}
-                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
-                    selectedImage === i ? 'border-gold-500' : 'border-white/10 hover:border-white/30'
-                  }`}
-                >
-                  <img src={getProductImageUrl(img.url)} alt={img.alt || ''} className="w-full h-full object-cover" />
-                </button>
-              ))}
+              {images.map((img, i) => {
+                const thumbUrl = getProductImageUrl(img.url);
+                return (
+                  <button
+                    key={img.id}
+                    onClick={() => setSelectedImage(i)}
+                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+                      selectedImage === i ? 'border-gold-500' : 'border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    {thumbUrl ? (
+                      <img src={thumbUrl} alt={img.alt || ''} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                        <ImageOff size={14} className="text-gray-600" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </motion.div>
@@ -220,6 +281,9 @@ const ProductDetail = () => {
               <TabsTrigger value="specs" className="data-[state=active]:bg-gold-500/10 data-[state=active]:text-gold-500 text-xs uppercase tracking-widest">
                 Specifications
               </TabsTrigger>
+              <TabsTrigger value="reviews" className="data-[state=active]:bg-gold-500/10 data-[state=active]:text-gold-500 text-xs uppercase tracking-widest">
+                Reviews ({product.reviews?.length || 0})
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="description" className="mt-4 text-gray-400 text-sm leading-relaxed">
               {product.description || 'No description available.'}
@@ -269,6 +333,9 @@ const ProductDetail = () => {
                   </div>
                 )}
               </div>
+            </TabsContent>
+            <TabsContent value="reviews" className="mt-4">
+              <ProductReviews productId={product.id} reviews={product.reviews || []} />
             </TabsContent>
           </Tabs>
 
