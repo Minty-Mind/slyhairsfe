@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { Filter, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, List, X, SlidersHorizontal, Loader2 } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
+import ProductRow from '@/components/product/ProductRow';
 import { getProducts } from '@/lib/api/products';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -100,6 +101,16 @@ function ShopContent() {
     const q = searchParams.get('q') || '';
     if (q !== searchQuery) setSearchQuery(q);
   }, [searchParams]);
+
+  // Lock body scroll when mobile filter drawer is open
+  useEffect(() => {
+    if (showFilters) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showFilters]);
 
   const resetFilters = () => {
     setSelectedCategory('');
@@ -203,8 +214,36 @@ function ShopContent() {
 
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col lg:flex-row gap-8">
+          {/* Mobile Filter Drawer Backdrop */}
+          {showFilters && (
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
+              onClick={() => setShowFilters(false)}
+            />
+          )}
+
           {/* Sidebar Filters */}
-          <aside className={cn("w-full lg:w-64 space-y-6 shrink-0 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:scrollbar-hide", showFilters ? "block" : "hidden lg:block")}>
+          <aside
+            className={cn(
+              // Mobile: fixed drawer from bottom
+              "fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto bg-neutral-950 border-t border-white/10 rounded-t-3xl p-5 space-y-5 transition-transform duration-300",
+              showFilters ? "translate-y-0" : "translate-y-full",
+              // Desktop: static sidebar
+              "lg:translate-y-0 lg:relative lg:inset-auto lg:max-h-[calc(100vh-6rem)] lg:bg-transparent lg:border-0 lg:rounded-none lg:p-0 lg:w-64 lg:shrink-0 lg:sticky lg:top-24 lg:self-start lg:scrollbar-hide lg:space-y-6 lg:overflow-y-auto lg:z-auto"
+            )}
+          >
+            {/* Mobile drawer handle + close */}
+            <div className="lg:hidden flex items-center justify-between pb-3 border-b border-white/5">
+              <h2 className="text-white font-black uppercase tracking-widest text-sm">Filters</h2>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-gray-400 hover:text-white p-1"
+                aria-label="Close filters"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
             {activeFilterCount > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-xs">{activeFilterCount} active filter{activeFilterCount !== 1 ? 's' : ''}</span>
@@ -278,10 +317,12 @@ function ShopContent() {
                 <div className={cn(
                   viewMode === 'grid'
                     ? "grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-5"
-                    : "flex flex-col gap-4"
+                    : "flex flex-col gap-3"
                 )}>
                   {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
+                    viewMode === 'grid'
+                      ? <ProductCard key={product.id} product={product} />
+                      : <ProductRow key={product.id} product={product} />
                   ))}
                 </div>
 
@@ -354,10 +395,6 @@ function ShopContent() {
         </div>
       </div>
 
-      {/* Mobile filter overlay */}
-      {showFilters && (
-        <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setShowFilters(false)} />
-      )}
     </div>
   );
 }

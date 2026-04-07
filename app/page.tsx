@@ -41,34 +41,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col w-full">
-      {/* Announcement Bar */}
-      <div className="bg-gold-500 text-black text-center py-2.5 px-4">
-        <p className="text-[11px] md:text-xs font-bold uppercase tracking-widest">
-          Free Shipping on Orders Over £150 &nbsp;&middot;&nbsp; 100% Vietnamese Human Hair &nbsp;&middot;&nbsp; Same-Day Dispatch
-        </p>
-      </div>
-
-      {/* Category Nav Strip */}
-      <div className="border-b border-white/5 bg-neutral-950">
-        <div className="max-w-7xl mx-auto px-6 overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-1 py-1 min-w-max">
-            <Link href="/shop" className="px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-gold-500 hover:bg-gold-500/5 rounded-lg transition-colors whitespace-nowrap">
-              All Products
-            </Link>
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/shop?category=${cat.slug}`}
-                className="px-4 py-2.5 text-xs font-medium uppercase tracking-widest text-gray-400 hover:text-gold-500 hover:bg-gold-500/5 rounded-lg transition-colors whitespace-nowrap"
-              >
-                {cat.title}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col w-full pt-20">
       {/* Hero Banner */}
       <section className="relative overflow-hidden bg-black">
         <div className="max-w-7xl mx-auto px-6">

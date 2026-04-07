@@ -14,8 +14,40 @@ const urbanist = Urbanist({
 });
 
 export const metadata: Metadata = {
-  title: "SlyHairs | Premium Vietnamese Human Hair Factory",
-  description: "Luxury hair extensions, weaves, and wigs for professional stylists and hair vendors.",
+  title: {
+    default: "SlysHair.com | The Essence of Hair",
+    template: "%s | SlysHair.com",
+  },
+  description:
+    "Premium Vietnamese human hair — bundles, wigs, frontals, closures, and extensions. Double drawn. Ethically sourced. Factory direct pricing.",
+  keywords: [
+    "Vietnamese hair", "human hair bundles", "HD lace wigs", "hair extensions",
+    "frontals", "closures", "luxury hair", "wholesale hair", "SlysHair",
+  ],
+  authors: [{ name: "SlysHair" }],
+  creator: "SlysHair",
+  metadataBase: new URL("https://slyshair.com"),
+  openGraph: {
+    type: "website",
+    siteName: "SlysHair.com",
+    title: "SlysHair.com — The Essence of Hair",
+    description:
+      "Premium Vietnamese human hair. Double drawn, ethically sourced, factory direct.",
+    images: [
+      {
+        url: "/logo.jpg",
+        width: 1080,
+        height: 1080,
+        alt: "SlysHair Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SlysHair.com — The Essence of Hair",
+    description: "Premium Vietnamese human hair. Factory direct.",
+    images: ["/logo.jpg"],
+  },
 };
 
 export default function RootLayout({

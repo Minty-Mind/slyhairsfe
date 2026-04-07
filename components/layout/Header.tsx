@@ -66,9 +66,14 @@ const Header = () => {
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <img
+              src="/logo.png"
+              alt="SlysHair"
+              className="w-9 h-9 md:w-11 md:h-11 object-contain transition-transform group-hover:scale-105"
+            />
             <span className="text-2xl md:text-3xl font-black tracking-tighter text-white">
-              SLY<span className="text-gold-500">HAIRS</span>
+              SLYS<span className="text-gold-500">HAIR</span>
             </span>
           </Link>
 

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { Shield, Truck, ShoppingBag, Minus, Plus, ImageOff } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { Shield, Truck, ShoppingBag, Minus, Plus, ImageOff, ArrowLeft } from 'lucide-react';
 
 const NoImage = () => (
   <div className="w-full h-full bg-neutral-800 flex flex-col items-center justify-center gap-3">
@@ -66,6 +66,7 @@ const ZoomImage = ({ src, alt }: { src: string; alt: string }) => {
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const addItem = useCartStore((state) => state.addItem);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,14 +124,23 @@ const ProductDetail = () => {
   const images = product.images?.length > 0 ? product.images : [];
 
   return (
-    <div className="pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-        <Link href="/" className="hover:text-gold-500">Home</Link>
-        <span>/</span>
-        <Link href="/shop" className="hover:text-gold-500">Shop</Link>
-        <span>/</span>
-        <span className="text-gray-300">{product.name}</span>
+    <div className="pt-28 md:pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto">
+      {/* Back Button + Breadcrumb */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 md:mb-8">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-gray-400 hover:text-gold-500 transition-colors text-xs font-bold uppercase tracking-widest group"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back
+        </button>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Link href="/" className="hover:text-gold-500 transition-colors">Home</Link>
+          <span className="text-gray-700">/</span>
+          <Link href="/shop" className="hover:text-gold-500 transition-colors">Shop</Link>
+          <span className="text-gray-700">/</span>
+          <span className="text-gray-300 line-clamp-1 max-w-[200px]">{product.name}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
