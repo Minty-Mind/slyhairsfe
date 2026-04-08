@@ -13,6 +13,9 @@ const urbanist = Urbanist({
   weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
+// Use deployed URL for absolute OG image URLs (required by Facebook/Twitter/WhatsApp)
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://slyshair.vercel.app";
+
 export const metadata: Metadata = {
   title: {
     default: "SlysHair.com | The Essence of Hair",
@@ -26,19 +29,25 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "SlysHair" }],
   creator: "SlysHair",
-  metadataBase: new URL("https://slyshair.com"),
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     siteName: "SlysHair.com",
     title: "SlysHair.com — The Essence of Hair",
     description:
       "Premium Vietnamese human hair. Double drawn, ethically sourced, factory direct.",
+    url: SITE_URL,
+    locale: "en_GB",
     images: [
       {
-        url: "/logo.jpg",
-        width: 1080,
-        height: 1080,
-        alt: "SlysHair Logo",
+        url: "/opengraph-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "SlysHair — The Essence of Hair",
+        type: "image/jpeg",
       },
     ],
   },
@@ -46,7 +55,18 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SlysHair.com — The Essence of Hair",
     description: "Premium Vietnamese human hair. Factory direct.",
-    images: ["/logo.jpg"],
+    images: ["/opengraph-image.jpg"],
+    creator: "@slyshair",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
